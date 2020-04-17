@@ -1,13 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
-
-
 // render react;
 // props + state;
 // xử lí độc lập, tính toàn vẹn dữ liệu
 
-
-const items = [];
+const items = []; // datasource
 
 for (let i =0; i< 10; i++) {
   const item = {
@@ -17,6 +14,45 @@ for (let i =0; i< 10; i++) {
   }
   items.push(item);
 }
+
+const getItems = ({ limit, offset }) => {
+  if (offset > items.length) {
+    return { status: 400, msg: 'No more element' };
+  }
+  return { items: items.slice(offset, offset + limit), total:items.length };
+}
+
+const getItemsDelay = ({ limit, offset }) => {
+  return new Promise((resolve, reject) => {
+    setTimeout(( ) => {
+      resolve(getItems({ limit, offset }))
+    }, 3000)
+  })
+}
+
+const getItemsService = async ({ limit, offset }) => {
+  try {
+
+    const result = await getItemsDelay({ limit, offset });
+    console.log('result', result)
+    if (result.status >= 400) {
+      throw result.msg
+    }
+    
+    return {
+      success: true,
+      data: {
+        list: result.items
+      }
+    }
+  } catch (error) {
+    return {
+      success: false,
+      msg: error
+    }
+  }
+}
+
 
 const Item = (props) =>{
   const { onAdd } = props;
@@ -72,6 +108,9 @@ return <div style={{ borderWidth: 1, borderStyle: 'solid' }}>
 
 function App() {
   const [cart, setCart] = useState([]);
+  const [cartItems, setCartItems] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [state, setState] = useState({ id: '1' });
 
   const onAddItem = item => {
     const findIndex = cart.findIndex(element => element.id === item.id);
@@ -90,15 +129,34 @@ function App() {
     }
   }
 
-  const onSubtractItem = (item) => {
+  const onSubtractItem = () => {
 
+  }
+
+  const loadCartItems = async () => {
+    setLoading(true);
+    const result = await getItemsService({ limit: 10, offset: 0 });
+    setLoading(false);
+    if (result.success) {
+      setCartItems(result.data.list)
+    } else { 
+      alert(result.msg)
+    }
   };
+
+  useEffect(() => {
+    loadCartItems({ id:state.id });
+  }, [state])
 
   return (
     <div className="App">
       <ShoppingCart cart={cart} onAdd={onAddItem} onSubtract={onSubtractItem} />
-      {items.map(item => <Item {...item } onAdd={onAddItem}/>)}
-
+      <div onClick={() => {
+        setState({ id: '1' } );
+      }} > SetAnotherID </div>
+      {loading && <p>Loading</p>}
+      {!loading && cartItems.length <= 0 ? <div >Click to load items</div> :
+      !loading && cartItems.map(item => <Item {...item } onAdd={onAddItem}/>)}
     </div>
   );
 }
