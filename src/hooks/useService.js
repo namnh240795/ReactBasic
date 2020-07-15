@@ -1,54 +1,35 @@
-import { useReducer } from 'react';
-const m = require('use-deep-compare-effect');
-
-const useDeepCompareEffect = m.default;
-
-// by pass warning of deep compare
-const EMPTY_OBJECT = {};
+import { useReducer, useCallback } from 'react';
 
 const reducer = (state, { payload, type }) => {
   switch (type) {
-    case 'replace_state':
-      return { ...state, ...payload };
+    case 'onLoadStart':
+      return { ...state, loading: true };
+    case 'onLoadSuccess':
+      return { ...state, loading: false, data: payload };
+    case 'onLoadFailed':
+      return { ...state, loading: false, error: payload };
     default:
       return state;
   }
 };
 
-export default function useService(service, params) {
+export default function useService(service) {
   const [{ loading, data, error }, dispatch] = useReducer(reducer, {
     loading: false,
     data: null,
     error: null,
   });
 
-  useDeepCompareEffect(() => {
-    
-    (async () => {
-        dispatch({ type: 'replace_state', payload: { loading: true } });
+  const triggerService = useCallback(async (params) => {
+    dispatch({ type: 'onLoadStart' });
+    const result = await service(params);
+    if (result.success) {
+      dispatch({ type: 'onLoadSuccess', payload: result.data });
+    } else {
+      dispatch({ type: 'onLoadFailed', payload: result.error })
+    }
+  }, [service]);
+  
 
-      const response = await service(params);
-
-      if (response) {
-        if (response.success) {
-            dispatch({
-              type: 'replace_state',
-              payload: { loading: false, data: response.data, error: null },
-            });
-        } else {
-            dispatch({
-              type: 'replace_state',
-              payload: { loading: false, error: response.error },
-            });
-        }
-      } else {
-        // eslint-disable-next-line no-console
-        console.warn('invalid error', service, params);
-      }
-    })();
-  }, [params, EMPTY_OBJECT]);
-
-
-
-  return [loading, data, error];
-}
+  return [loading, data, error, triggerService]
+};

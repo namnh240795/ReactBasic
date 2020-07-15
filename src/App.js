@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
+import useService from './hooks/useService';
 // render react;
 // props + state;
 // xử lí độc lập, tính toàn vẹn dữ liệu
@@ -109,8 +110,9 @@ return <div style={{ borderWidth: 1, borderStyle: 'solid' }}>
 function App() {
   const [cart, setCart] = useState([]);
   const [cartItems, setCartItems] = useState([]);
-  const [loading, setLoading] = useState(false);
+  // const [loading, setLoading] = useState(false);
   const [state, setState] = useState({ id: '1' });
+  const [loading, items, _, triggerLoadItem] = useService(getItemsService);
 
   const onAddItem = item => {
     const findIndex = cart.findIndex(element => element.id === item.id);
@@ -133,20 +135,9 @@ function App() {
 
   }
 
-  const loadCartItems = async () => {
-    setLoading(true);
-    const result = await getItemsService({ limit: 10, offset: 0 });
-    setLoading(false);
-    if (result.success) {
-      setCartItems(result.data.list)
-    } else { 
-      alert(result.msg)
-    }
-  };
-
   useEffect(() => {
-    loadCartItems({ id:state.id });
-  }, [state])
+    triggerLoadItem({ limit: 10, offset: 0 })
+  }, [triggerLoadItem])
 
   return (
     <div className="App">
@@ -155,8 +146,8 @@ function App() {
         setState({ id: '1' } );
       }} > SetAnotherID </div>
       {loading && <p>Loading</p>}
-      {!loading && cartItems.length <= 0 ? <div >Click to load items</div> :
-      !loading && cartItems.map(item => <Item {...item } onAdd={onAddItem}/>)}
+      {!loading && items && items.list.length <= 0 ? <div >Click to load items</div> :
+      !loading && items && items.list.map(item => <Item {...item } onAdd={onAddItem}/>)}
     </div>
   );
 }
